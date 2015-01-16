@@ -1,5 +1,5 @@
 
-#include "point_search.cpp"
+#include "range_point_search.cpp"
 #include <vector>
 #include <random>
 #include <ctime>
@@ -7,7 +7,7 @@
 #include <boost\progress.hpp>
 using namespace std;
 #define POINT_NUMBER 10000000
-#define SEARCH_NUMBER 1000
+#define SEARCH_NUMBER 100000
 int main()
 {
 	Point* hehe;
@@ -57,7 +57,7 @@ int main()
 			current_rect.hy = a;
 			current_rect.ly = b;
 		}
-		auto result = haha.stack_query(current_rect,20);
+		auto result = haha.stack_query(current_rect,25);
 		c = result.size();
 		++currentProgress;
 	}
