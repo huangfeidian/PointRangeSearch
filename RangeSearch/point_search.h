@@ -10,7 +10,7 @@ implements this interface. */
 #include <stdint.h>
 /* The following structs are packed with no padding. */
 #pragma pack(push, 1)
-
+#pragma once
 /* Defines a point in 2D space with some additional attributes like id and rank. */
 struct Point
 {
@@ -30,19 +30,19 @@ struct Rect
 };
 #pragma pack(pop)
 
-/* Declaration of the struct that is used as the context for the calls. */
-struct SearchContext;
-
-/* Load the provided points into an internal data structure. The pointers follow the STL iterator convention, where
-"points_begin" points to the first element, and "points_end" points to one past the last element. The input points are
-only guaranteed to be valid for the duration of the call. Return a pointer to the context that can be used for
-consecutive searches on the data. */
-typedef SearchContext* (__stdcall* T_create)(const Point* points_begin, const Point* points_end);
-
-/* Search for "count" points with the smallest ranks inside "rect" and copy them ordered by smallest rank first in
-"out_points". Return the number of points copied. "out_points" points to a buffer owned by the caller that
-can hold "count" number of Points. */
-typedef int32_t(__stdcall* T_search)(SearchContext* sc, const Rect rect, const int32_t count, Point* out_points);
-
-/* Release the resources associated with the context. Return nullptr if successful, "sc" otherwise. */
-typedef SearchContext* (__stdcall* T_destroy)(SearchContext* sc);
+///* Declaration of the struct that is used as the context for the calls. */
+//struct SearchContext;
+//
+///* Load the provided points into an internal data structure. The pointers follow the STL iterator convention, where
+//"points_begin" points to the first element, and "points_end" points to one past the last element. The input points are
+//only guaranteed to be valid for the duration of the call. Return a pointer to the context that can be used for
+//consecutive searches on the data. */
+//typedef SearchContext* (__stdcall* T_create)(const Point* points_begin, const Point* points_end);
+//
+///* Search for "count" points with the smallest ranks inside "rect" and copy them ordered by smallest rank first in
+//"out_points". Return the number of points copied. "out_points" points to a buffer owned by the caller that
+//can hold "count" number of Points. */
+//typedef int32_t(__stdcall* T_search)(SearchContext* sc, const Rect rect, const int32_t count, Point* out_points);
+//
+///* Release the resources associated with the context. Return nullptr if successful, "sc" otherwise. */
+//typedef SearchContext* (__stdcall* T_destroy)(SearchContext* sc);
