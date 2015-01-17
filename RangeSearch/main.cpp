@@ -7,14 +7,14 @@
 #include <boost\progress.hpp>
 using namespace std;
 #define POINT_NUMBER 10000000
-#define SEARCH_NUMBER 10000
+#define SEARCH_NUMBER 100000
 #define SEARCH_RESULT 20
 int main()
 {
 	Point* hehe;
 	random_device rd;
 	mt19937 gen(rd());
-	uniform_real_distribution<float> dis(1, 100);
+	uniform_real_distribution<float> dis(1, 1000);
 	vector<pair<int, int>> test_data{ { 2, 19 }, { 7, 10 }, { 12, 3 }, { 17, 62 }, { 21, 49 }, { 41, 95 }, { 58, 59 }, { 93, 70 },
 									{ 5, 80 }, { 8, 37 }, { 15, 99 }, { 33, 30 }, { 52, 23 }, { 67, 89 } };
 	hehe = new Point[POINT_NUMBER];
@@ -28,7 +28,7 @@ int main()
 
 	clock_t begin_t = clock();
 	SearchContext haha(hehe, hehe + POINT_NUMBER);
-	LinearSearchContext linehaha(hehe, hehe + POINT_NUMBER);
+	//LinearSearchContext linehaha(hehe, hehe + POINT_NUMBER);
 	Point linear_result[SEARCH_RESULT];
 	clock_t end_t = clock();
 	std::cout << "time elapsed during creation is " << end_t - begin_t << endl;
@@ -76,7 +76,7 @@ int main()
 			current_rect.ly = b;
 		}
 		auto result = haha.stack_query(current_rect, SEARCH_RESULT);
-		int linear_result_size = linehaha.search(current_rect, SEARCH_RESULT, linear_result);
+		/*int linear_result_size = linehaha.search(current_rect, SEARCH_RESULT, linear_result);
 		c = result.size();
 		if (c != linear_result_size)
 		{
@@ -84,7 +84,7 @@ int main()
 			cout << "tree result is ";
 			for (int i = 0; i < c; i++)
 			{
-				cout << result[i] << " ";
+				cout << result[i].rank << " ";
 			}
 			cout << endl;
 			cout << "linear result is ";
@@ -99,7 +99,7 @@ int main()
 		{
 			for (int k = 0; k < c; k++)
 			{
-				if (result[k] != linear_result[k].rank)
+				if (result[k].rank != linear_result[k].rank)
 				{
 					fault=1;
 					break;
@@ -108,10 +108,15 @@ int main()
 			if (fault == 1)
 			{
 				cout << "current range is : x " << current_rect.lx << "-" << current_rect.hx << " y" << current_rect.ly << "- " << current_rect.hy << endl;
-				cout << "tree result is ";
+				cout << "tree result is "<<endl;
 				for (int i = 0; i < c; i++)
 				{
-					cout << result[i] << " ";
+					cout << result[i].rank << " ";
+				}
+				cout << endl;
+				for (int i = 0; i < c; i++)
+				{
+					cout << result[i].x << " ";
 				}
 				cout << endl;
 				cout << "linear result is ";
@@ -120,10 +125,15 @@ int main()
 					cout << linear_result[i].rank << " ";
 				}
 				cout << endl;
+				for (int i = 0; i < linear_result_size; i++)
+				{
+					cout << linear_result[i].x << " ";
+				}
+				cout << endl;
 				break;
 			}
 			
-		}
+		}*/
 		
 	}
 	begin_t = clock();
