@@ -3,11 +3,10 @@
 #include <vector>
 #include <random>
 #include <ctime>
-#include <boost\timer.hpp>
-#include <boost\progress.hpp>
+
 using namespace std;
 #define POINT_NUMBER 10000000
-#define SEARCH_NUMBER 100000
+#define SEARCH_NUMBER 10000
 #define SEARCH_RESULT 20
 int main()
 {
@@ -25,16 +24,19 @@ int main()
 		hehe[i].y = dis(gen);
 		hehe[i].id = 0;
 	}
-
+	Rect* query=new Rect[SEARCH_NUMBER];
+	Point result[SEARCH_RESULT];
 	clock_t begin_t = clock();
 	SearchContext haha(hehe, hehe + POINT_NUMBER);
-	//LinearSearchContext linehaha(hehe, hehe + POINT_NUMBER);
-	Point linear_result[SEARCH_RESULT];
 	clock_t end_t = clock();
-	std::cout << "time elapsed during creation is " << end_t - begin_t << endl;
+	std::cout << "time elapsed during quad creation is " << end_t - begin_t << endl;
+	LinearSearchContext linehaha(hehe, hehe + POINT_NUMBER);
+	begin_t = clock();
+	std::cout << "time elapsed during linear creation is " << begin_t - end_t << endl;
 	int c = 0;
 	int fault = 0;
 	int fault_size = 0;
+	int total_size = 0;
 	//Rect now;
 	//now.hx = 33.6;
 	//now.lx = 20.5;
@@ -75,7 +77,7 @@ int main()
 			current_rect.hy = a;
 			current_rect.ly = b;
 		}
-		auto result = haha.stack_query(current_rect, SEARCH_RESULT);
+		query[i] = current_rect;
 		/*int linear_result_size = linehaha.search(current_rect, SEARCH_RESULT, linear_result);
 		c = result.size();
 		if (c != linear_result_size)
@@ -137,9 +139,22 @@ int main()
 		
 	}
 	begin_t = clock();
-	std::cout << "total time elapsed during query is " << begin_t - end_t << endl;
-	std::cout << "average query time is " << (1.0*(begin_t - end_t)) / SEARCH_NUMBER << endl;
-	std::cout << "false is " << fault << std::endl;
-	std::cout << "false size is " << fault_size << std::endl;
+	for (int i = 0; i < SEARCH_NUMBER; i++)
+	{
+		auto result = haha.stack_query(query[i], 20);
+		total_size += result.size();
+	}
+	end_t = clock();
+	std::cout << "total time elapsed during quad query is " << end_t-begin_t << endl;
+	std::cout << "average query time is " << (1.0*(end_t-begin_t)) / SEARCH_NUMBER << endl;
+	begin_t = clock();
+	for (int i = 0; i < SEARCH_NUMBER; i++)
+	{
+		auto result = linehaha.search(query[i], 20);
+		total_size += result.size();
+	}
+	end_t = clock();
+	std::cout << "total time elapsed during linear query is " << end_t - begin_t << endl;
+	std::cout << "average query time is " << (1.0*(end_t - begin_t)) / SEARCH_NUMBER << endl;
 	haha.clear_memory();
 }

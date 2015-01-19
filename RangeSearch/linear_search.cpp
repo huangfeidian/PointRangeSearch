@@ -33,6 +33,23 @@ struct LinearSearchContext
 		}
 		return result_count;
 	}
+	std::vector<Point> search(Rect rect, int count)
+	{
+		int result_count = 0;
+		std::vector<Point> result;
+		result.reserve(count);
+		int size = points.size();
+		for (int i = 0; i < size&&result_count < count; i++)
+		{
+			Point hehe = points[i];
+			if (hehe.y >= rect.ly&&hehe.y <= rect.hy&&hehe.x >= rect.lx&&hehe.x <= rect.hx)
+			{
+				result.push_back(hehe);
+				result_count++;
+			}
+		}
+		return result;
+	}
 	std::vector<Point> points;
 
 };

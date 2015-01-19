@@ -18,7 +18,7 @@ private:
 	{
 		int begin_x;
 		int end_x;
-
+		int biggest_rank;
 		int* all_node;
 		int node_size;
 		QuadTreeNode* node_1;
@@ -48,42 +48,71 @@ private:
 			}
 			else
 			{
-				if (new_rank < result[0])
+				result[0] = new_rank;
+				int i = 0;
+				while (i < mini_k / 2)
 				{
-					result[0] = new_rank;
-					int i = 0;
-					while (i < mini_k / 2)
+					int less_index = 2 * i + 1;
+					if (2 * i <= mini_k - 3)
 					{
-						int less_index=2*i+1;
-						if (2 * i <= mini_k - 3)
+						if (result[2 * i + 1] < result[2 * i + 2])
 						{
-							if (result[2 * i + 1] < result[2 * i + 2])
-							{
-								less_index = 2 * i + 2;
-							}
-						}
-						if (result[less_index]>result[i])
-						{
-							std::swap(result[less_index], result[i]);
-							i = less_index;
-						}
-						else
-						{
-							break;
+							less_index = 2 * i + 2;
 						}
 					}
+					if (result[less_index]>result[i])
+					{
+						std::swap(result[less_index], result[i]);
+						i = less_index;
+					}
+					else
+					{
+						break;
+					}
 				}
-
 			}
 		}
 
 	};
+	struct query_stack_struct
+	{
+		QuadTreeNode* node;
+		int begin_x;
+		int end_x;
+	};
+	//struct rank_queue
+	//{
+	//	std::vector<query_stack_struct> all_query;
+	//	inline void push_back(query_stack_struct hehe)
+	//	{
+	//		all_query.push_back(hehe);
+	//		std::push_heap(all_query.begin(), all_query.end(), [](const query_stack_struct& a, const query_stack_struct& b)->bool
+	//		{
+	//			return a.node->biggest_rank < b.node->biggest_rank;
+	//		});
+	//	}
+	//	inline query_stack_struct pop()
+	//	{
+	//		std::pop_heap(all_query.begin(), all_query.end(), [](const query_stack_struct& a, const query_stack_struct& b)->bool
+	//		{
+	//			return a.node->biggest_rank < b.node->biggest_rank;
+	//		});
+	//		auto temp = all_query.back();
+	//		all_query.pop_back();
+	//		return temp;
+	//	}
+	//	inline bool empty()
+	//	{
+	//		return all_query.empty();
+	//	}
+	//};
 private:
 
 
 	QuadTreeNode* head;
 	const float EPS = 0.0000001f;
 	int point_number;
+	std::queue<query_stack_struct> task_queue;
 public:
 	std::vector<Point> input_points;
 	int* points_x;
@@ -135,6 +164,7 @@ public:
 		head->node_3 = nullptr;
 		head->node_4 = nullptr;
 		head->begin_x = 0;
+		head->biggest_rank = point_number;
 		head->end_x = point_number;
 		stack_split(head);
 	}
@@ -182,6 +212,7 @@ private:
 			son_1->node_3 = nullptr;
 			son_1->node_4 = nullptr;
 			son_1->node_size = 0;
+			son_1->biggest_rank = 0;
 			son_1->begin_x = father->begin_x;
 			son_1->end_x = delimiter_1;
 			son_2->node_1 = nullptr;
@@ -189,6 +220,7 @@ private:
 			son_2->node_3 = nullptr;
 			son_2->node_4 = nullptr;
 			son_2->node_size = 0;
+			son_2->biggest_rank = 0;
 			son_2->begin_x = delimiter_1;
 			son_2->end_x = delimiter_2;
 			son_3->node_1 = nullptr;
@@ -196,6 +228,7 @@ private:
 			son_3->node_3 = nullptr;
 			son_3->node_4 = nullptr;
 			son_3->node_size = 0;
+			son_3->biggest_rank = 0;
 			son_3->begin_x = delimiter_2;
 			son_3->end_x = delimiter_3;
 			son_4->node_1 = nullptr;
@@ -203,6 +236,7 @@ private:
 			son_4->node_3 = nullptr;
 			son_4->node_4 = nullptr;
 			son_4->node_size = 0;
+			son_4->biggest_rank = 0;
 			son_4->begin_x = delimiter_3;
 			son_4->end_x = father->end_x;
 			father->node_1 = son_1;
@@ -263,11 +297,15 @@ private:
 				son_4->node_size++;
 				continue;
 			}
+			son_1->biggest_rank = son_1->all_node[son_1_size - 1];
+			son_2->biggest_rank = son_2->all_node[son_2_size - 1];
+			son_3->biggest_rank = son_3->all_node[son_3_size - 1];
+			son_4->biggest_rank = son_4->all_node[son_4_size - 1];
 			if (son_1->node_size > 1024)
 			{
 				frac_node_queue.push(son_1);
 			}
-			if (son_2->node_size > 1024)
+			if (son_2->node_size >1024)
 			{
 				frac_node_queue.push(son_2);
 			}
@@ -283,25 +321,19 @@ private:
 	}
 	std::vector<int> stack_normal_query_nth(QuadTreeNode* INcurrent, int INbegin_x, int INend_x, const Rect& range, int nth)
 	{
-		struct query__stack_struct
-		{
-			QuadTreeNode* node;
-			int begin_x;
-			int end_x;
-		};
+
 		float ly = range.ly;
 		float lx = range.lx;
 		float hx = range.hx;
 		float hy = range.hy;
+		int total_size = 0;
 		std::vector<int> total_result;
 		mini_k_heap result_heap(nth);
-		std::queue<query__stack_struct> task_queue;
-		query__stack_struct head_stack_node;
+		query_stack_struct head_stack_node;
 		head_stack_node.node = INcurrent;
 		head_stack_node.begin_x = INbegin_x;
 		head_stack_node.end_x = INend_x;
 		task_queue.push(head_stack_node);
-		int* result = (int*) malloc(sizeof(int)*nth);
 		while (!task_queue.empty())
 		{
 			auto current_task_node = task_queue.front();
@@ -315,47 +347,55 @@ private:
 			}
 			if ((current->begin_x == begin_x&&current->end_x == end_x))
 			{
-				int return_node_size = 0;
-				for (int i = 0; i < current->node_size&&return_node_size < nth; i++)
+				for (int i = 0; i < current->node_size; i++)
 				{
 					int temp = current->all_node[i];
-					float temp_y = input_points[temp].y;
-					if ( temp_y<= hy&&temp_y >= ly)
+					if (total_size<nth || temp < result_heap.result[0])
 					{
-						
-						result[return_node_size++]=temp;
+						float temp_y = input_points[temp].y;
+						if (temp_y <= hy&&temp_y >= ly)
+						{
+
+							result_heap.push_back(temp);
+							total_size++;
+						}
 					}
+					else
+					{
+						break;
+					}
+
 				}
-				for (int i = 0; i <return_node_size; i++)
-				{
-					result_heap.push_back(result[i]);
-				}
+
 				continue;
 			}
 			if (current->node_1 == nullptr)
 			{
-				int return_node_size = 0;
-				for (int i = 0; i < current->node_size&&return_node_size < nth; i++)
+				for (int i = 0; i < current->node_size; i++)
 				{
 					int temp = current->all_node[i];
-					float temp_y = input_points[temp].y;
-					float temp_x = input_points[temp].x;
-					if (temp_y <= hy&&temp_y >= ly&&temp_x <= hx&&temp_x >= lx)
+					if (total_size<nth || temp < result_heap.result[0])
 					{
-						result[return_node_size++] = temp;
+						float temp_y = input_points[temp].y;
+						float temp_x = input_points[temp].x;
+						if (temp_y <= hy&&temp_y >= ly&&temp_x <= hx&&temp_x >= lx)
+						{
+							result_heap.push_back(temp);
+							total_size++;
+						}
 					}
+					else
+					{
+						break;
+					}
+				}
 
-				}
-				for (int i = 0; i < return_node_size; i++)
-				{
-					result_heap.push_back(result[i]);
-				}
 				continue;
 			}
-			query__stack_struct son_1_stack_node;
-			query__stack_struct son_2_stack_node;
-			query__stack_struct son_3_stack_node;
-			query__stack_struct son_4_stack_node;
+			query_stack_struct son_1_stack_node;
+			query_stack_struct son_2_stack_node;
+			query_stack_struct son_3_stack_node;
+			query_stack_struct son_4_stack_node;
 			int quad_clap = (current->end_x - current->begin_x + 1) / 4;
 			int delimiter_1 = current->begin_x + quad_clap;
 			int delimiter_2 = delimiter_1 + quad_clap;
@@ -399,7 +439,6 @@ private:
 				task_queue.push(son_4_stack_node);
 			}
 		}
-		free(result);
 		std::make_heap(result_heap.result.begin(), result_heap.result.end());
 		std::sort_heap(result_heap.result.begin(), result_heap.result.end());
 		return result_heap.result;
@@ -423,7 +462,7 @@ public:
 		{
 			return std::vector<Point>();
 		}
-		result=stack_normal_query_nth(head, lower_x, upper_x, range, nth);
+		result = stack_normal_query_nth(head, lower_x, upper_x, range, nth);
 		std::vector<Point> point_result;
 		point_result.reserve(result.size());
 		for (auto i : result)
@@ -438,6 +477,7 @@ public:
 		{
 			std::queue<QuadTreeNode*> frac_node_queue;
 			frac_node_queue.push(head);
+			free(points_x);
 			while (!frac_node_queue.empty())
 			{
 				auto current_front = frac_node_queue.front();

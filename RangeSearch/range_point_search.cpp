@@ -122,6 +122,7 @@ public:
 	{
 		point_number = 0;
 		head = nullptr;
+
 		while (begin != end)
 		{
 			input_points.push_back(*begin);
