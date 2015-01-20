@@ -10,7 +10,9 @@
 #include <malloc.h>
 #include <memory>
 using namespace std;
-#define FRAC 8
+#define FRAC 4
+#define MINK 20
+#define NSIZE 256
 struct SearchContext
 {
 private:
@@ -27,22 +29,20 @@ private:
 		shared_ptr<QuadTreeNode> son_nodes[FRAC];
 
 	};
-	struct mini_k_heap
+	/*struct mini_k_heap
 	{
 	public:
 		std::vector<int> result;
-		int mini_k;
-		mini_k_heap(int INmini_k=0)
+		mini_k_heap()
 		{
-			mini_k = INmini_k;
-			result.reserve(INmini_k);
+			result.reserve(MINK);
 		}
 		inline bool push_back(int new_rank)
 		{
-			if (result.size() < mini_k)
+			if (result.size() < MINK)
 			{
 				result.push_back(new_rank);
-				if (result.size() == mini_k)
+				if (result.size() == MINK)
 				{
 					std::make_heap(result.begin(), result.end());
 				}
@@ -54,10 +54,10 @@ private:
 				{
 					result[0] = new_rank;
 					int i = 0;
-					while (i < mini_k / 2)
+					while (i < MINK / 2)
 					{
 						int less_index = 2 * i + 1;
-						if (2 * i <= mini_k - 3)
+						if (2 * i <= MINK - 3)
 						{
 							if (result[2 * i + 1] < result[2 * i + 2])
 							{
@@ -80,16 +80,14 @@ private:
 				{
 					return false;
 				}
-
 			}
 		}
-		void resize(int kth)
+		void resize()
 		{
 			result.clear();
-			result.reserve(kth);
-			mini_k = kth;
+			result.reserve(MINK);
 		}
-	};
+	};*/
 	struct Range
 	{
 		int lx;
@@ -130,9 +128,9 @@ private:
 	//};
 private:
 
-	mini_k_heap result_heap;
+	int result[MINK];
 	shared_ptr<QuadTreeNode> head;
-	int point_number;
+	const int point_number;
 	int total_size;
 	queue<shared_ptr<QuadTreeNode>> frac_node_queue;
 	queue<query_stack_struct> task_queue;
@@ -141,15 +139,12 @@ public:
 	std::vector<Point> input_points;
 	vector<int> points_x;
 	vector<int> points_y;
-	SearchContext(const Point* begin, const Point* end)
+	SearchContext(const Point* begin, const Point* end) :point_number(end - begin)
 	{
-		point_number = 0;
-		head = nullptr;
 		if (end == begin)
 		{
 			return;
 		}
-		point_number = end - begin;
 		input_points.reserve(point_number);
 		while (begin != end)
 		{
@@ -164,8 +159,8 @@ public:
 		points_y.reserve(point_number);
 		for (int i = 0; i < point_number; i++)
 		{
-			points_x[i] = i;
-			points_y[i] = i;
+			points_x.push_back(i);
+			points_y.push_back(i);
 		}
 		sort(points_x.begin(), points_x.end(), [&](int a, int b)->bool
 		{
@@ -180,14 +175,18 @@ public:
 		head->all_node.reserve(point_number);
 		for (int i = 0; i < point_number; i++)
 		{
-			head->all_node[i] = i;
+			head->all_node.push_back(i);
 		}
 		head->begin_x = 0;
 		head->end_x = point_number;
 		head->begin_y = 0;
 		head->end_y = point_number;
 		head->is_x = true;
-		stack_split(head);
+		if (point_number >NSIZE)
+		{
+			stack_split(head);
+		}
+
 	}
 private:
 	inline int get_x_lower(float IN_x)const
@@ -217,7 +216,7 @@ private:
 	inline int get_y_lower(float IN_y)const
 	{
 
-		auto lower_bound = std::lower_bound(points_x.cbegin(), points_x.cend(), IN_y, [&](int a, float b)->bool
+		auto lower_bound = std::lower_bound(points_y.cbegin(), points_y.cend(), IN_y, [&](int a, float b)->bool
 		{
 			return input_points[a].y < b;
 		});
@@ -241,15 +240,52 @@ private:
 			}
 		}
 	}
+	inline void push_heap(int temp)
+	{
+		if (total_size < MINK)
+		{
+			result[total_size++] = temp;
+			if (total_size == MINK)
+			{
+				make_heap(result, result + MINK);
+			}
+		}
+		else
+		{
+			result[0] = temp;
+			int i = 0;
+			while (i < MINK / 2)
+			{
+				int less_index = 2 * i + 1;
+				if (2 * i <= MINK - 3)
+				{
+					if (result[2 * i + 1] < result[2 * i + 2])
+					{
+						less_index = 2 * i + 2;
+					}
+				}
+				if (result[less_index]>result[i])
+				{
+					std::swap(result[less_index], result[i]);
+					i = less_index;
+				}
+				else
+				{
+					break;
+				}
+			}
+		}
+	}
 	void split_x(shared_ptr<QuadTreeNode> father)
 	{
-		int clip = (father->end_x - father->begin_x + FRAC-1) / 8;
+		int clip = (father->end_x - father->begin_x + FRAC - 1) / FRAC;
 		shared_ptr<QuadTreeNode> sons[FRAC];
 		for (int i = 0; i < FRAC; i++)
 		{
 			sons[i] = make_shared<QuadTreeNode>();
 			sons[i]->begin_y = father->begin_y;
 			sons[i]->end_y = father->end_y;
+			sons[i]->is_x = false;
 			father->son_nodes[i] = sons[i];
 		}
 		for (int i = 0; i < FRAC - 1; i++)
@@ -263,17 +299,18 @@ private:
 		float deli[FRAC];
 		for (int i = 0; i < FRAC; i++)
 		{
-			deli[i] = points_x[sons[i]->begin_x];
+			deli[i] = input_points[points_x[sons[i]->begin_x]].x;
 		}
 		for (int i = 0; i < father->node_size; i++)
 		{
 			auto temp = upper_bound(begin(deli), end(deli), input_points[father->all_node[i]].x);
-			int index = distance(begin(deli), temp)-1;
+			int index = distance(begin(deli), temp) - 1;
 			son_size[index]++;
 		}
 		for (int i = 0; i < FRAC; i++)
 		{
 			sons[i]->all_node.reserve(son_size[i]);
+			sons[i]->node_size = son_size[i];
 		}
 		for (int i = 0; i < father->node_size; i++)
 		{
@@ -283,14 +320,14 @@ private:
 		}
 		for (int i = 0; i < FRAC; i++)
 		{
-			if (son_size[i]>1024)
+			if (son_size[i]>NSIZE)
 			{
 				frac_node_queue.push(sons[i]);
 			}
 		}
 		vector<int> temp_result;
-		temp_result.reserve(20);
-		for (int i = 0; i < 20; i++)
+		temp_result.reserve(MINK);
+		for (int i = 0; i < MINK; i++)
 		{
 			temp_result.push_back(father->all_node[i]);
 		}
@@ -298,13 +335,14 @@ private:
 	}
 	void split_y(shared_ptr<QuadTreeNode> father)
 	{
-		int clip = (father->end_y - father->begin_y + FRAC - 1) / 8;
+		int clip = (father->end_y - father->begin_y + FRAC - 1) / FRAC;
 		shared_ptr<QuadTreeNode> sons[FRAC];
 		for (int i = 0; i < FRAC; i++)
 		{
 			sons[i] = make_shared<QuadTreeNode>();
 			sons[i]->begin_x = father->begin_x;
 			sons[i]->end_x = father->end_x;
+			sons[i]->is_x = true;
 			father->son_nodes[i] = sons[i];
 		}
 		for (int i = 0; i < FRAC - 1; i++)
@@ -318,7 +356,7 @@ private:
 		float deli[FRAC];
 		for (int i = 0; i < FRAC; i++)
 		{
-			deli[i] = points_y[sons[i]->begin_y];
+			deli[i] = input_points[points_y[sons[i]->begin_y]].y;
 		}
 		for (int i = 0; i < father->node_size; i++)
 		{
@@ -329,6 +367,7 @@ private:
 		for (int i = 0; i < FRAC; i++)
 		{
 			sons[i]->all_node.reserve(son_size[i]);
+			sons[i]->node_size = son_size[i];
 		}
 		for (int i = 0; i < father->node_size; i++)
 		{
@@ -338,71 +377,129 @@ private:
 		}
 		for (int i = 0; i < FRAC; i++)
 		{
-			if (son_size[i]>1024)
+			if (son_size[i]>NSIZE)
 			{
 				frac_node_queue.push(sons[i]);
 			}
 		}
 		vector<int> temp_result;
-		temp_result.reserve(20);
-		for (int i = 0; i < 20; i++)
+		temp_result.reserve(MINK);
+		for (int i = 0; i < MINK; i++)
 		{
 			temp_result.push_back(father->all_node[i]);
 		}
 		father->all_node.swap(temp_result);
 	}
-	std::vector<int> stack_normal_query_nth(  const Range& rect)
+	void stack_normal_query_MINK(const Range& rect)
 	{
-		int nth = result_heap.mini_k;
-		int total_size = 0;
-		std::vector<int> total_result;
+		
 		query_stack_struct head_stack_node;
 		head_stack_node.node = head;
-		head_stack_node.range =rect;
+		head_stack_node.range = rect;
 		task_queue.push(head_stack_node);
+		Range new_range;
+		query_stack_struct new_query;
+		shared_ptr<QuadTreeNode> cur_node;
+		Range cur_range;
 		while (!task_queue.empty())
 		{
 			auto current_task_node = task_queue.front();
 			task_queue.pop();
-			shared_ptr<QuadTreeNode> current_node = current_task_node.node;
-			Range temp_range = current_task_node.range;
-			if (current_node->begin_x == temp_range.lx&&current_node->end_x == temp_range.hx&&current_node->begin_y == temp_range.ly&&current_node->end_y == temp_range.hy)
+			cur_node= current_task_node.node;
+			cur_range= current_task_node.range;
+			if (cur_node->begin_x == cur_range.lx&&cur_node->end_x == cur_range.hx&&cur_node->begin_y == cur_range.ly&&cur_node->end_y == cur_range.hy)
 			{
-				for (auto temp : current_node->all_node)
+				for (auto temp : cur_node->all_node)
 				{
-					if (total_size < nth || temp < result_heap.result[0])
+					if (total_size < MINK || temp < result[0])
 					{
-						result_heap.push_back(temp);
-						total_size++;
+						push_heap(temp);
 					}
 					else
 					{
 						break;
 					}
 				}
+				continue;
 			}
-			if (!current_node->son_nodes[0])
+			if (cur_node->node_size<=NSIZE)
 			{
-
+				query_leaf(current_task_node);
+				continue;
 			}
-			if (current_node->is_x)
+			if (cur_node->is_x)
 			{
-				stack_query_x(current_task_node);
+				new_range.hy = cur_range.hy;
+				new_range.ly = cur_range.ly;
+				int clip = (cur_node->end_x - cur_node->begin_x + FRAC - 1) / FRAC;
+				int begin_index = (cur_range.lx - cur_node->begin_x) / clip;
+				for (int i = begin_index; i < FRAC; i++)
+				{
+					if (cur_node->begin_x + i*clip < cur_range.lx)
+					{
+						new_range.lx = cur_range.lx;
+					}
+					else
+					{
+						new_range.lx = cur_node->begin_x + i*clip;
+					}
+					if (cur_node->begin_x + (i + 1)*clip < cur_range.hx)
+					{
+						new_range.hx = cur_node->begin_x + (i + 1)*clip;
+						new_query.range = new_range;
+						new_query.node = cur_node->son_nodes[i];
+						task_queue.push(new_query);
+					}
+					else
+					{
+						new_range.hx = cur_range.hx;
+						new_query.range = new_range;
+						new_query.node = cur_node->son_nodes[i];
+						task_queue.push(new_query);
+						break;
+					}
+				}
 			}
 			else
 			{
-				stack_query_y(current_task_node);
+				new_range.hx = cur_range.hx;
+				new_range.lx = cur_range.lx;
+				int clip = (cur_node->end_y - cur_node->begin_y + FRAC - 1) / FRAC;
+				int begin_index = (cur_range.ly - cur_node->begin_y) / clip;
+				for (int i = begin_index; i < FRAC; i++)
+				{
+					new_query.node = cur_node->son_nodes[i];
+					if (cur_node->begin_y + i*clip < cur_range.ly)
+					{
+						new_range.ly = cur_range.ly;
+					}
+					else
+					{
+						new_range.ly = cur_node->begin_y + i*clip;
+					}
+					if (cur_node->begin_y + (i + 1)*clip < cur_range.hy)
+					{
+						new_range.hy = cur_node->begin_y + (i + 1)*clip;
+						new_query.range = new_range;
+						task_queue.push(new_query);
+					}
+					else
+					{
+						new_range.hy = cur_range.hy;
+						new_query.range = new_range;
+						task_queue.push(new_query);
+						break;
+					}
+				}
 			}
 		}
-		std::make_heap(result_heap.result.begin(), result_heap.result.end());
-		std::sort_heap(result_heap.result.begin(), result_heap.result.end());
-		return result_heap.result;
+		std::make_heap(result, result+total_size);
+		std::sort_heap(result, result+total_size);
 	}
 	void query_leaf(query_stack_struct cur_query)
 	{
 		auto cur_node = cur_query.node;
 		auto cur_range = cur_query.range;
-		int nth = result_heap.mini_k;
 		float hx, hy, lx, ly;
 		if (cur_node->end_x == cur_range.hx)
 		{
@@ -416,13 +513,12 @@ private:
 					{
 						int temp = cur_node->all_node[i];
 
-						if (total_size < nth || temp < result_heap.result[0])
+						if (total_size < MINK || temp < result[0])
 						{
 							float temp_y = input_points[temp].y;
 							if (temp_y >= ly)
 							{
-								result_heap.push_back(temp);
-								total_size++;
+								push_heap(temp);
 							}
 						}
 						else
@@ -440,13 +536,12 @@ private:
 						{
 							int temp = cur_node->all_node[i];
 
-							if (total_size < nth || temp < result_heap.result[0])
+							if (total_size < MINK || temp < result[0])
 							{
 								float temp_y = input_points[temp].y;
 								if (temp_y < hy)
 								{
-									result_heap.push_back(temp);
-									total_size++;
+									push_heap(temp);
 								}
 							}
 							else
@@ -462,13 +557,12 @@ private:
 						{
 							int temp = cur_node->all_node[i];
 
-							if (total_size < nth || temp < result_heap.result[0])
+							if (total_size < MINK || temp < result[0])
 							{
 								float temp_y = input_points[temp].y;
 								if (temp_y < hy&&temp_y >= ly)
 								{
-									result_heap.push_back(temp);
-									total_size++;
+									push_heap(temp);
 								}
 							}
 							else
@@ -485,21 +579,18 @@ private:
 				if (cur_node->end_y == cur_range.hy)
 				{
 					//这里需要再去判断begin_y了 之前的判断已经判断完了
-					hy = input_points[points_y[cur_range.hy]].y;
 					if (cur_node->begin_y == cur_range.ly)
 					{
 						for (int i = 0; i < cur_node->node_size; i++)
 						{
 							int temp = cur_node->all_node[i];
 
-							if (total_size < nth || temp < result_heap.result[0])
+							if (total_size < MINK || temp < result[0])
 							{
-								float temp_y = input_points[temp].y;
 								float temp_x = input_points[temp].x;
-								if (temp_y < hy&&temp_x >= lx)
+								if (temp_x >= lx)
 								{
-									result_heap.push_back(temp);
-									total_size++;
+									push_heap(temp);
 								}
 							}
 							else
@@ -515,14 +606,13 @@ private:
 						{
 							int temp = cur_node->all_node[i];
 
-							if (total_size < nth || temp < result_heap.result[0])
+							if (total_size < MINK || temp < result[0])
 							{
 								float temp_y = input_points[temp].y;
 								float temp_x = input_points[temp].x;
-								if (temp_y >= ly&&temp_y < hy&&temp_x >= lx)
+								if (temp_y >= ly&&temp_x >= lx)
 								{
-									result_heap.push_back(temp);
-									total_size++;
+									push_heap(temp);
 								}
 							}
 							else
@@ -541,13 +631,13 @@ private:
 						{
 							int temp = cur_node->all_node[i];
 
-							if (total_size < nth || temp < result_heap.result[0])
+							if (total_size < MINK || temp <result[0])
 							{
 								float temp_y = input_points[temp].y;
-								if (temp_y < hy)
+								float temp_x = input_points[temp].x;
+								if (temp_y < hy&&temp_x >= lx)
 								{
-									result_heap.push_back(temp);
-									total_size++;
+									push_heap(temp);
 								}
 							}
 							else
@@ -563,13 +653,13 @@ private:
 						{
 							int temp = cur_node->all_node[i];
 
-							if (total_size < nth || temp < result_heap.result[0])
+							if (total_size < MINK || temp < result[0])
 							{
 								float temp_y = input_points[temp].y;
-								if (temp_y < hy&&temp_y >= ly)
+								float temp_x = input_points[temp].x;
+								if (temp_y < hy&&temp_y >= ly&&temp_x >= lx)
 								{
-									result_heap.push_back(temp);
-									total_size++;
+									push_heap(temp);
 								}
 							}
 							else
@@ -589,21 +679,18 @@ private:
 				if (cur_node->end_y == cur_range.hy)
 				{
 					//这里就需要再去判断begin_y 
-					ly = input_points[points_y[cur_range.ly]].y;
 					if (cur_node->begin_y == cur_range.ly)
 					{
 						for (int i = 0; i < cur_node->node_size; i++)
 						{
 							int temp = cur_node->all_node[i];
 
-							if (total_size < nth || temp < result_heap.result[0])
+							if (total_size < MINK || temp < result[0])
 							{
-								float temp_y = input_points[temp].y;
 								float temp_x = input_points[temp].x;
-								if (temp_y >= hy&&temp_x<hx)
+								if (temp_x<hx)
 								{
-									result_heap.push_back(temp);
-									total_size++;
+									push_heap(temp);
 								}
 							}
 							else
@@ -619,14 +706,13 @@ private:
 						{
 							int temp = cur_node->all_node[i];
 
-							if (total_size < nth || temp < result_heap.result[0])
+							if (total_size < MINK || temp < result[0])
 							{
 								float temp_y = input_points[temp].y;
 								float temp_x = input_points[temp].x;
-								if (temp_y < hy&&temp_y >= ly&&temp_x<hx)
+								if (temp_y >= ly&&temp_x<hx)
 								{
-									result_heap.push_back(temp);
-									total_size++;
+									push_heap(temp);
 								}
 							}
 							else
@@ -645,14 +731,13 @@ private:
 						{
 							int temp = cur_node->all_node[i];
 
-							if (total_size < nth || temp < result_heap.result[0])
+							if (total_size < MINK || temp <result[0])
 							{
 								float temp_y = input_points[temp].y;
 								float temp_x = input_points[temp].x;
 								if (temp_y < hy&&temp_x<hx)
 								{
-									result_heap.push_back(temp);
-									total_size++;
+									push_heap(temp);
 								}
 							}
 							else
@@ -668,14 +753,13 @@ private:
 						{
 							int temp = cur_node->all_node[i];
 
-							if (total_size < nth || temp < result_heap.result[0])
+							if (total_size < MINK || temp < result[0])
 							{
 								float temp_y = input_points[temp].y;
 								float temp_x = input_points[temp].x;
 								if (temp_y < hy&&temp_y >= ly&&temp_x<hx)
 								{
-									result_heap.push_back(temp);
-									total_size++;
+									push_heap(temp);
 								}
 							}
 							else
@@ -697,13 +781,12 @@ private:
 						{
 							int temp = cur_node->all_node[i];
 
-							if (total_size < nth || temp < result_heap.result[0])
+							if (total_size < MINK || temp < result[0])
 							{
 								float temp_x = input_points[temp].x;
 								if (temp_x >= lx&&temp_x<hx)
 								{
-									result_heap.push_back(temp);
-									total_size++;
+									push_heap(temp);
 								}
 							}
 							else
@@ -719,14 +802,14 @@ private:
 						{
 							int temp = cur_node->all_node[i];
 
-							if (total_size < nth || temp < result_heap.result[0])
+							if (total_size < MINK || temp < result[0])
 							{
 								float temp_y = input_points[temp].y;
 								float temp_x = input_points[temp].x;
 								if (temp_y >= ly&&temp_x >= lx&&temp_x<hx)
 								{
-									result_heap.push_back(temp);
-									total_size++;
+									push_heap(temp);
+									
 								}
 							}
 							else
@@ -745,14 +828,13 @@ private:
 						{
 							int temp = cur_node->all_node[i];
 
-							if (total_size < nth || temp < result_heap.result[0])
+							if (total_size < MINK || temp < result[0])
 							{
 								float temp_y = input_points[temp].y;
 								float temp_x = input_points[temp].x;
 								if (temp_y < hy&&temp_x >= lx&&temp_x<hx)
 								{
-									result_heap.push_back(temp);
-									total_size++;
+									push_heap(temp);
 								}
 							}
 							else
@@ -768,14 +850,13 @@ private:
 						{
 							int temp = cur_node->all_node[i];
 
-							if (total_size < nth || temp < result_heap.result[0])
+							if (total_size < MINK || temp < result[0])
 							{
 								float temp_y = input_points[temp].y;
 								float temp_x = input_points[temp].x;
 								if (temp_y < hy&&temp_y >= ly&&temp_x<hx&&temp_x >= lx)
 								{
-									result_heap.push_back(temp);
-									total_size++;
+									push_heap(temp);
 								}
 							}
 							else
@@ -792,412 +873,79 @@ private:
 	{
 		auto cur_node = cur_query.node;
 		auto cur_range = cur_query.range;
-		int nth = result_heap.mini_k;
-		if (cur_node->node_size == 0)
+		Range new_range;
+		query_stack_struct new_query;
+		new_range.hy = cur_range.hy;
+		new_range.ly = cur_range.ly;
+		int clip = (cur_node->end_x - cur_node->begin_x + FRAC - 1) / FRAC;
+		int begin_index = (cur_range.lx - cur_node->begin_x) / clip;
+		for (int i = begin_index; i < FRAC; i++)
 		{
-			return;
-		}
-		if (cur_range.lx >= cur_range.hx || cur_range.ly >= cur_range.hy)
-		{
-			return;
-		}
-		float hx,hy, lx, ly;
-		if (!cur_node->son_nodes[0])
-		{
-			if (cur_node->end_x == cur_range.hx)
+			if (cur_node->begin_x + i*clip < cur_range.lx)
 			{
-				if (cur_node->begin_x == cur_range.lx)
-				{
-					if (cur_node->end_y == cur_range.hy)
-					{
-						//这里就不需要再去判断begin_y了 之前的判断已经判断完了
-						ly = input_points[points_y[cur_range.ly]].y;
-						for (int i = 0; i < cur_node->node_size; i++)
-						{
-							int temp = cur_node->all_node[i];
-
-							if (total_size < nth || temp < result_heap.result[0])
-							{
-								float temp_y = input_points[temp].y;
-								if (temp_y >= ly)
-								{
-									result_heap.push_back(temp);
-									total_size++;
-								}
-							}
-							else
-							{
-								break;
-							}
-						}
-					}
-					else
-					{
-						hy = input_points[points_y[cur_range.hy]].y;
-						if (cur_node->begin_y == cur_range.ly)
-						{
-							for (int i = 0; i < cur_node->node_size; i++)
-							{
-								int temp = cur_node->all_node[i];
-
-								if (total_size < nth || temp < result_heap.result[0])
-								{
-									float temp_y = input_points[temp].y;
-									if (temp_y < hy)
-									{
-										result_heap.push_back(temp);
-										total_size++;
-									}
-								}
-								else
-								{
-									break;
-								}
-							}
-						}
-						else
-						{
-							ly = input_points[points_y[cur_range.ly]].y;
-							for (int i = 0; i < cur_node->node_size; i++)
-							{
-								int temp = cur_node->all_node[i];
-
-								if (total_size < nth || temp < result_heap.result[0])
-								{
-									float temp_y = input_points[temp].y;
-									if (temp_y < hy&&temp_y >= ly)
-									{
-										result_heap.push_back(temp);
-										total_size++;
-									}
-								}
-								else
-								{
-									break;
-								}
-							}
-						}
-					}
-				}
-				else
-				{
-					lx = input_points[points_x[cur_range.lx]].x;
-					if (cur_node->end_y == cur_range.hy)
-					{
-						//这里需要再去判断begin_y了 之前的判断已经判断完了
-						hy = input_points[points_y[cur_range.hy]].y;
-						if (cur_node->begin_y == cur_range.ly)
-						{
-							for (int i = 0; i < cur_node->node_size; i++)
-							{
-								int temp = cur_node->all_node[i];
-
-								if (total_size < nth || temp < result_heap.result[0])
-								{
-									float temp_y = input_points[temp].y;
-									float temp_x = input_points[temp].x;
-									if (temp_y < hy&&temp_x >= lx)
-									{
-										result_heap.push_back(temp);
-										total_size++;
-									}
-								}
-								else
-								{
-									break;
-								}
-							}
-						}
-						else
-						{
-							ly = input_points[points_y[cur_range.ly]].y;
-							for (int i = 0; i < cur_node->node_size; i++)
-							{
-								int temp = cur_node->all_node[i];
-
-								if (total_size < nth || temp < result_heap.result[0])
-								{
-									float temp_y = input_points[temp].y;
-									float temp_x = input_points[temp].x;
-									if (temp_y >= ly&&temp_y < hy&&temp_x >= lx)
-									{
-										result_heap.push_back(temp);
-										total_size++;
-									}
-								}
-								else
-								{
-									break;
-								}
-							}
-						}
-					}
-					else
-					{
-						hy = input_points[points_y[cur_range.hy]].y;
-						if (cur_node->begin_y == cur_range.ly)
-						{
-							for (int i = 0; i < cur_node->node_size; i++)
-							{
-								int temp = cur_node->all_node[i];
-
-								if (total_size < nth || temp < result_heap.result[0])
-								{
-									float temp_y = input_points[temp].y;
-									if (temp_y < hy)
-									{
-										result_heap.push_back(temp);
-										total_size++;
-									}
-								}
-								else
-								{
-									break;
-								}
-							}
-						}
-						else
-						{
-							ly = input_points[points_y[cur_range.ly]].y;
-							for (int i = 0; i < cur_node->node_size; i++)
-							{
-								int temp = cur_node->all_node[i];
-
-								if (total_size < nth || temp < result_heap.result[0])
-								{
-									float temp_y = input_points[temp].y;
-									if (temp_y < hy&&temp_y >= ly)
-									{
-										result_heap.push_back(temp);
-										total_size++;
-									}
-								}
-								else
-								{
-									break;
-								}
-							}
-						}
-					}
-				}
+				new_range.lx = cur_range.lx;
 			}
 			else
 			{
-				hx = input_points[points_x[cur_range.hx]].x;
-				if (cur_node->begin_x == cur_range.lx)
-				{
-					if (cur_node->end_y == cur_range.hy)
-					{
-						//这里就需要再去判断begin_y 
-						ly = input_points[points_y[cur_range.ly]].y;
-						if (cur_node->begin_y == cur_range.ly)
-						{
-							for (int i = 0; i < cur_node->node_size; i++)
-							{
-								int temp = cur_node->all_node[i];
-
-								if (total_size < nth || temp < result_heap.result[0])
-								{
-									float temp_y = input_points[temp].y;
-									float temp_x = input_points[temp].x;
-									if (temp_y >=hy&&temp_x<hx)
-									{
-										result_heap.push_back(temp);
-										total_size++;
-									}
-								}
-								else
-								{
-									break;
-								}
-							}
-						}
-						else
-						{
-							ly = input_points[points_y[cur_range.ly]].y;
-							for (int i = 0; i < cur_node->node_size; i++)
-							{
-								int temp = cur_node->all_node[i];
-
-								if (total_size < nth || temp < result_heap.result[0])
-								{
-									float temp_y = input_points[temp].y;
-									float temp_x = input_points[temp].x;
-									if (temp_y < hy&&temp_y >= ly&&temp_x<hx)
-									{
-										result_heap.push_back(temp);
-										total_size++;
-									}
-								}
-								else
-								{
-									break;
-								}
-							}
-						}
-					}
-					else
-					{
-						hy = input_points[points_y[cur_range.hy]].y;
-						if (cur_node->begin_y == cur_range.ly)
-						{
-							for (int i = 0; i < cur_node->node_size; i++)
-							{
-								int temp = cur_node->all_node[i];
-
-								if (total_size < nth || temp < result_heap.result[0])
-								{
-									float temp_y = input_points[temp].y;
-									float temp_x = input_points[temp].x;
-									if (temp_y < hy&&temp_x<hx)
-									{
-										result_heap.push_back(temp);
-										total_size++;
-									}
-								}
-								else
-								{
-									break;
-								}
-							}
-						}
-						else
-						{
-							ly = input_points[points_y[cur_range.ly]].y;
-							for (int i = 0; i < cur_node->node_size; i++)
-							{
-								int temp = cur_node->all_node[i];
-
-								if (total_size < nth || temp < result_heap.result[0])
-								{
-									float temp_y = input_points[temp].y;
-									float temp_x = input_points[temp].x;
-									if (temp_y < hy&&temp_y >= ly&&temp_x<hx)
-									{
-										result_heap.push_back(temp);
-										total_size++;
-									}
-								}
-								else
-								{
-									break;
-								}
-							}
-						}
-					}
-				}
-				else
-				{
-					lx = input_points[points_x[cur_range.lx]].x;
-					if (cur_node->end_y == cur_range.hy)
-					{
-						if (cur_node->begin_y == cur_range.ly)
-						{
-							for (int i = 0; i < cur_node->node_size; i++)
-							{
-								int temp = cur_node->all_node[i];
-
-								if (total_size < nth || temp < result_heap.result[0])
-								{
-									float temp_x = input_points[temp].x;
-									if (temp_x >= lx&&temp_x<hx)
-									{
-										result_heap.push_back(temp);
-										total_size++;
-									}
-								}
-								else
-								{
-									break;
-								}
-							}
-						}
-						else
-						{
-							ly = input_points[points_y[cur_range.ly]].y;
-							for (int i = 0; i < cur_node->node_size; i++)
-							{
-								int temp = cur_node->all_node[i];
-
-								if (total_size < nth || temp < result_heap.result[0])
-								{
-									float temp_y = input_points[temp].y;
-									float temp_x = input_points[temp].x;
-									if (temp_y >= ly&&temp_x >= lx&&temp_x<hx)
-									{
-										result_heap.push_back(temp);
-										total_size++;
-									}
-								}
-								else
-								{
-									break;
-								}
-							}
-						}
-					}
-					else
-					{
-						hy = input_points[points_y[cur_range.hy]].y;
-						if (cur_node->begin_y == cur_range.ly)
-						{
-							for (int i = 0; i < cur_node->node_size; i++)
-							{
-								int temp = cur_node->all_node[i];
-
-								if (total_size < nth || temp < result_heap.result[0])
-								{
-									float temp_y = input_points[temp].y;
-									float temp_x = input_points[temp].x;
-									if (temp_y < hy&&temp_x>=lx&&temp_x<hx)
-									{
-										result_heap.push_back(temp);
-										total_size++;
-									}
-								}
-								else
-								{
-									break;
-								}
-							}
-						}
-						else
-						{
-							ly = input_points[points_y[cur_range.ly]].y;
-							for (int i = 0; i < cur_node->node_size; i++)
-							{
-								int temp = cur_node->all_node[i];
-
-								if (total_size < nth || temp < result_heap.result[0])
-								{
-									float temp_y = input_points[temp].y;
-									float temp_x = input_points[temp].x;
-									if (temp_y < hy&&temp_y >= ly&&temp_x<hx&&temp_x>=lx)
-									{
-										result_heap.push_back(temp);
-										total_size++;
-									}
-								}
-								else
-								{
-									break;
-								}
-							}
-						}
-					}
-				}
+				new_range.lx = cur_node->begin_x + i*clip;
+			}
+			if (cur_node->begin_x + (i + 1)*clip < cur_range.hx)
+			{
+				new_range.hx = cur_node->begin_x + (i + 1)*clip;
+				new_query.range = new_range;
+				new_query.node = cur_node->son_nodes[i];
+				task_queue.push(new_query);
+			}
+			else
+			{
+				new_range.hx = cur_range.hx;
+				new_query.range = new_range;
+				new_query.node = cur_node->son_nodes[i];
+				task_queue.push(new_query);
+				break;
 			}
 		}
 	}
 	void stack_query_y(query_stack_struct cur_query)
 	{
-
+		auto cur_node = cur_query.node;
+		auto cur_range = cur_query.range;
+		Range new_range;
+		query_stack_struct new_query;
+		new_range.hx = cur_range.hx;
+		new_range.lx = cur_range.lx;
+		int clip = (cur_node->end_y - cur_node->begin_y + FRAC - 1) / FRAC;
+		int begin_index = (cur_range.ly - cur_node->begin_y) / clip;
+		for (int i = begin_index; i < FRAC; i++)
+		{
+			if (cur_node->begin_y + i*clip < cur_range.ly)
+			{
+				new_range.ly = cur_range.ly;
+			}
+			else
+			{
+				new_range.ly = cur_node->begin_y + i*clip;
+			}
+			if (cur_node->begin_y + (i + 1)*clip < cur_range.hy)
+			{
+				new_range.hy = cur_node->begin_y + (i + 1)*clip;
+				new_query.range = new_range;
+				new_query.node = cur_node->son_nodes[i];
+				task_queue.push(new_query);
+			}
+			else
+			{
+				new_range.hy = cur_range.hy;
+				new_query.range = new_range;
+				new_query.node = cur_node->son_nodes[i];
+				task_queue.push(new_query);
+				break;
+			}
+		}
 	}
 public:
 	std::vector<Point> stack_query(Rect range, int nth)
 	{
-
-		std::vector<int> result;
 		if (point_number == 0)
 		{
 			return std::vector<Point>();
@@ -1208,16 +956,16 @@ public:
 		cur_range.hy = get_y_upper(range.hy);
 		cur_range.lx = get_x_lower(range.lx);
 		cur_range.hx = get_x_upper(range.hx);
-		if (cur_range.lx == point_number||cur_range.hy==0||cur_range.ly==point_number||cur_range.hy==0)
+		if (cur_range.lx == point_number || cur_range.hy == 0 || cur_range.ly == point_number || cur_range.hy == 0)
 		{
 			return std::vector<Point>();
 		}
-		result = stack_normal_query_nth(cur_range);
+		stack_normal_query_MINK(cur_range);
 		std::vector<Point> point_result;
-		point_result.reserve(result.size());
-		for (auto i : result)
+		point_result.reserve(total_size);
+		for (int i = 0; i < total_size;i++)
 		{
-			point_result.push_back(input_points[i]);
+			point_result.push_back(input_points[result[i]]);
 		}
 		return point_result;
 	}

@@ -1,19 +1,19 @@
 #include "linear_search.cpp"
-#include "quad_tree.cpp"
+#include "kd_tree.cpp"
 #include <vector>
 #include <random>
 #include <ctime>
 
 using namespace std;
 #define POINT_NUMBER 10000000
-#define SEARCH_NUMBER 10000
+#define SEARCH_NUMBER 100000
 #define SEARCH_RESULT 20
 int main()
 {
 	Point* hehe;
 	random_device rd;
 	mt19937 gen(rd());
-	uniform_real_distribution<float> dis(1, 1000);
+	uniform_real_distribution<float> dis(1, 100000);
 	vector<pair<int, int>> test_data{ { 2, 19 }, { 7, 10 }, { 12, 3 }, { 17, 62 }, { 21, 49 }, { 41, 95 }, { 58, 59 }, { 93, 70 },
 									{ 5, 80 }, { 8, 37 }, { 15, 99 }, { 33, 30 }, { 52, 23 }, { 67, 89 } };
 	hehe = new Point[POINT_NUMBER];
@@ -29,8 +29,14 @@ int main()
 	clock_t begin_t = clock();
 	SearchContext haha(hehe, hehe + POINT_NUMBER);
 	clock_t end_t = clock();
-	std::cout << "time elapsed during quad creation is " << end_t - begin_t << endl;
-	LinearSearchContext linehaha(hehe, hehe + POINT_NUMBER);
+	//query[0].lx = 23.5;
+	//query[0].hx = 93.2;
+	//query[0].ly = 11.9;
+	//query[0].hy = 59.3;
+	//haha.stack_query(query[0], 2);
+	//return 1;
+	std::cout << "time elapsed during kd creation is " << end_t - begin_t << endl;
+	//LinearSearchContext linehaha(hehe, hehe + POINT_NUMBER);
 	begin_t = clock();
 	std::cout << "time elapsed during linear creation is " << begin_t - end_t << endl;
 	int c = 0;
@@ -138,6 +144,34 @@ int main()
 		}*/
 		
 	}
+	//for (int i = 0; i < SEARCH_NUMBER; i++)
+	//{
+	//	auto kd_result = haha.stack_query(query[i], 20);
+	//	auto linear_result = linehaha.search(query[i], 20);
+	//	if (linear_result.size() != kd_result.size())
+	//	{
+	//		cout << "false size in the "<<i<<" round"<<endl;
+	//		cout << linear_result.size() << "   " << kd_result.size()<<endl;
+	//		cout << "x " << query[i].lx << "-" << query[i].hx << "  " << "y: " << query[i].ly << "-" << query[i].hy << endl;
+	//		for (auto i : linear_result)
+	//		{
+	//			cout << i.rank << " ";
+	//		}
+	//		cout << endl;
+	//		return 1;
+	//	}
+	//	else
+	//	{
+	//		for (int i = 0; i < kd_result.size(); i++)
+	//		{
+	//			if (kd_result[i].rank != linear_result[i].rank)
+	//			{
+	//				cout << " false content" << endl;
+	//				return 1;
+	//			}
+	//		}
+	//	}
+	//}
 	begin_t = clock();
 	for (int i = 0; i < SEARCH_NUMBER; i++)
 	{
@@ -145,16 +179,15 @@ int main()
 		total_size += result.size();
 	}
 	end_t = clock();
-	std::cout << "total time elapsed during quad query is " << end_t-begin_t << endl;
+	std::cout << "total time elapsed during kd query is " << end_t-begin_t << endl;
 	std::cout << "average query time is " << (1.0*(end_t-begin_t)) / SEARCH_NUMBER << endl;
-	begin_t = clock();
-	for (int i = 0; i < SEARCH_NUMBER; i++)
-	{
-		auto result = linehaha.search(query[i], 20);
-		total_size += result.size();
-	}
-	end_t = clock();
+	//begin_t = clock();
+	//for (int i = 0; i < SEARCH_NUMBER; i++)
+	//{
+	//	auto result = linehaha.search(query[i], 20);
+	//	total_size += result.size();
+	//}
+	//end_t = clock();
 	std::cout << "total time elapsed during linear query is " << end_t - begin_t << endl;
 	std::cout << "average query time is " << (1.0*(end_t - begin_t)) / SEARCH_NUMBER << endl;
-	haha.clear_memory();
 }
