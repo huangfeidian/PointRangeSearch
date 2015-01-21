@@ -1,15 +1,21 @@
+
 #include "linear_search.cpp"
 #include "kd_tree.cpp"
 #include <vector>
 #include <random>
 #include <ctime>
 
+ //#include <stdlib.h>
+ //#include <crtdbg.h>
+ //#include <windows.h>
+
 using namespace std;
 #define POINT_NUMBER 10000000
 #define SEARCH_NUMBER 100000
 #define SEARCH_RESULT 20
-int main()
+int wmain(int argc, wchar_t* args [])
 {
+
 	Point* hehe;
 	random_device rd;
 	mt19937 gen(rd());
@@ -190,4 +196,10 @@ int main()
 	//end_t = clock();
 	std::cout << "total time elapsed during linear query is " << end_t - begin_t << endl;
 	std::cout << "average query time is " << (1.0*(end_t - begin_t)) / SEARCH_NUMBER << endl;
+	//haha.clear_memory();
+	delete [] hehe;
+	delete [] query;
+/*	_CrtDumpMemoryLeaks()*/;
+	return 0;
+
 }
