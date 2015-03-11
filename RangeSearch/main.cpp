@@ -1,17 +1,19 @@
 
+#include "PST.cpp"
+//#include "kd_tree.cpp"
 #include "linear_search.cpp"
-#include "kd_tree.cpp"
 #include <vector>
 #include <random>
 #include <ctime>
+#include <iostream>
 
  //#include <stdlib.h>
  //#include <crtdbg.h>
  //#include <windows.h>
 
 using namespace std;
-#define POINT_NUMBER 10000000
-#define SEARCH_NUMBER 100000
+#define POINT_NUMBER 1000000
+#define SEARCH_NUMBER 1000
 #define SEARCH_RESULT 20
 int wmain(int argc, wchar_t* args [])
 {
@@ -32,8 +34,9 @@ int wmain(int argc, wchar_t* args [])
 	}
 	Rect* query=new Rect[SEARCH_NUMBER];
 	Point result[SEARCH_RESULT];
+	Point linear_result[SEARCH_RESULT];
 	clock_t begin_t = clock();
-	SearchContext haha(hehe, hehe + POINT_NUMBER);
+	PST haha(hehe, hehe + POINT_NUMBER);
 	clock_t end_t = clock();
 	//query[0].lx = 23.5;
 	//query[0].hx = 93.2;
@@ -42,7 +45,7 @@ int wmain(int argc, wchar_t* args [])
 	//haha.stack_query(query[0], 2);
 	//return 1;
 	std::cout << "time elapsed during kd creation is " << end_t - begin_t << endl;
-	//LinearSearchContext linehaha(hehe, hehe + POINT_NUMBER);
+	LinearSearchContext linehaha(hehe, hehe + POINT_NUMBER);
 	begin_t = clock();
 	std::cout << "time elapsed during linear creation is " << begin_t - end_t << endl;
 	int c = 0;
@@ -90,13 +93,13 @@ int wmain(int argc, wchar_t* args [])
 			current_rect.ly = b;
 		}
 		query[i] = current_rect;
-		/*int linear_result_size = linehaha.search(current_rect, SEARCH_RESULT, linear_result);
-		c = result.size();
-		if (c != linear_result_size)
+		int linear_result_size = linehaha.search(current_rect, SEARCH_RESULT, linear_result);
+		int pst_result_size = haha.search(current_rect, SEARCH_RESULT, result);
+		if (pst_result_size != linear_result_size)
 		{
 			cout << "current range is : x " << current_rect.lx << "-" << current_rect.hx << " y" << current_rect.ly << "- " << current_rect.hy<<endl;
 			cout << "tree result is ";
-			for (int i = 0; i < c; i++)
+			for (int i = 0; i < pst_result_size; i++)
 			{
 				cout << result[i].rank << " ";
 			}
@@ -111,7 +114,7 @@ int wmain(int argc, wchar_t* args [])
 		}
 		else
 		{
-			for (int k = 0; k < c; k++)
+			for (int k = 0; k < pst_result_size; k++)
 			{
 				if (result[k].rank != linear_result[k].rank)
 				{
@@ -123,12 +126,12 @@ int wmain(int argc, wchar_t* args [])
 			{
 				cout << "current range is : x " << current_rect.lx << "-" << current_rect.hx << " y" << current_rect.ly << "- " << current_rect.hy << endl;
 				cout << "tree result is "<<endl;
-				for (int i = 0; i < c; i++)
+				for (int i = 0; i < pst_result_size; i++)
 				{
 					cout << result[i].rank << " ";
 				}
 				cout << endl;
-				for (int i = 0; i < c; i++)
+				for (int i = 0; i < pst_result_size; i++)
 				{
 					cout << result[i].x << " ";
 				}
@@ -147,7 +150,7 @@ int wmain(int argc, wchar_t* args [])
 				break;
 			}
 			
-		}*/
+		}
 		
 	}
 	//for (int i = 0; i < SEARCH_NUMBER; i++)
@@ -178,27 +181,27 @@ int wmain(int argc, wchar_t* args [])
 	//		}
 	//	}
 	//}
-	begin_t = clock();
-	for (int i = 0; i < SEARCH_NUMBER; i++)
-	{
-		auto result = haha.stack_query(query[i], 20);
-		total_size += result.size();
-	}
-	end_t = clock();
-	std::cout << "total time elapsed during kd query is " << end_t-begin_t << endl;
-	std::cout << "average query time is " << (1.0*(end_t-begin_t)) / SEARCH_NUMBER << endl;
 	//begin_t = clock();
 	//for (int i = 0; i < SEARCH_NUMBER; i++)
 	//{
-	//	auto result = linehaha.search(query[i], 20);
+	//	auto result = haha.stack_query(query[i], 20);
 	//	total_size += result.size();
 	//}
 	//end_t = clock();
-	std::cout << "total time elapsed during linear query is " << end_t - begin_t << endl;
-	std::cout << "average query time is " << (1.0*(end_t - begin_t)) / SEARCH_NUMBER << endl;
-	//haha.clear_memory();
-	delete [] hehe;
-	delete [] query;
+	//std::cout << "total time elapsed during kd query is " << end_t-begin_t << endl;
+	//std::cout << "average query time is " << (1.0*(end_t-begin_t)) / SEARCH_NUMBER << endl;
+	////begin_t = clock();
+	////for (int i = 0; i < SEARCH_NUMBER; i++)
+	////{
+	////	auto result = linehaha.search(query[i], 20);
+	////	total_size += result.size();
+	////}
+	////end_t = clock();
+	//std::cout << "total time elapsed during linear query is " << end_t - begin_t << endl;
+	//std::cout << "average query time is " << (1.0*(end_t - begin_t)) / SEARCH_NUMBER << endl;
+	////haha.clear_memory();
+	//delete [] hehe;
+	//delete [] query;
 /*	_CrtDumpMemoryLeaks()*/;
 	return 0;
 
